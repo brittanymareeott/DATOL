@@ -44,8 +44,9 @@ echo INPUT Directory = "$INPUT" >> $OUT/log.txt
 echo Threads = "$THREADS" >> $OUT/log.txt
 
 mkdir $OUT/genetrees
-for ALIGNMENT in $INPUT/*$EXT
+cd $INPUT
+for ALIGNMENT in *$EXT
 do
  printf "****************************** RAxML for $ALIGNMENT starting now!"
  raxmlHPC-PTHREADS-SSE3 -f a -p 12345 -x 12345 -# 100 -m GTRGAMMA -s $ALIGNMENT -T $THREADS -n $ALIGNMENT.tre -w $OUT/genetrees
- done
+done
