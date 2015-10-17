@@ -82,7 +82,7 @@ for ITEM in SPECIES_LIST:
 print TREE_LIST
 print SPECIES_LIST
 print MISSING_LIST
-# Remove missing species from alignment and write this edited alignment out to a new file
+# Write a new alignment file in fasta format that only includes species from the tree file
 for PRUNE in MISSING_LIST:
 	SPECIES_LIST.remove(PRUNE)
 with open(OUTPUT, 'w') as OUT:
