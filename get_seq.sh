@@ -1,5 +1,27 @@
 #!/usr/bin/env bash
 
+# Author Gregory S Mendez
+#
+# This script quickly fetches sequences based on def-lines from a text file and writes a new fasta file.
+# It uses samtools faidx http://www.htslib.org to do the real work. This script just uses the text file
+# file names to set the input fasta file and output file name, and parallelizes the process using xargs.
+#
+# The script takes 3 arguments:
+# 1) -i | --input_dir - The directory containing the text files with the def-lines of the sequences to fetch.
+# 2) -o | --output_dir - The directory where the new fasta files should be written.
+# 3) -t | --trans - The directory containing the large fasta files to fetch the sequences from.
+#
+# Usage: get_seq -i ~/GreenAlgae/pepfromblast_txt -t ~/GreenAlgae/translations -o ~/GreenAlgae/pepfromblast_out
+#
+# The input files should be names as follows:
+# genename_taxon_id_with_underscores.txt
+# The first part is the gene name/identifier. This must not contain underscores or periods.
+# The second part is the species name/identifier. This can contain underscores or period.
+# There must be a file extension at the end of the file name.
+# 
+# The contents of the file should contain a fasta def line on each line. The script PepFromBlast.py generates
+# the input text file expected by this script.
+
 #Code to handle the named variable inputs:
 while [[ $# > 1 ]]
 do
