@@ -57,17 +57,26 @@ echo Cut off file = "$CUTOFF_FILE" >> $OUT_DIR/log.txt
 echo HMM Directory = "$HMM_DIR" >> $OUT_DIR/log.txt
 echo Gene Prefix = "$PREFIX" >> $OUT_DIR/log.txt
 
+function FIND_SPECIES_GENE()
+{
+        SPLIT_FILE=($(echo $1 | tr "\." "\n" | tr "_" "\n"))
+        unset SPLIT_FILE[${#SPLIT_FILE[@]}-1]
+        GENE=${SPLIT_FILE[0]}
+        SPECIES_SPACED=${SPLIT_FILE[@]:1}
+        SPECIES=${SPECIES_SPACED// /_}
+        OUT=$GENE'_'$SPECIES'.out'
+}
+
 # Loop through fasta files
-for i in $IN_DIR/query*.faa
+for i in $IN_DIR/*.faa
   do
 # Set some variable:
 # We find the GENE name in the fasta file with some regular expressions. Specifically we are search for our prefix followed by numbers.
 # We set HMM to the gene name plus the .hmm extension.
 # We set the output file name (OUT) to the current file name minus the query_, .faa., and _db_. This simplifys the output names.
 # We set the cutoff score by finding the name in the cutoff file matching GENE and a space then we remove the gene name so only the number remains.
-    GENE=`echo "${i##*/}" | sed -e 's,query_\('$PREFIX'[0-9]*\).*,\1,'`
     HMM=$GENE.hmm
-    OUT=`echo "${i##*/}" | sed -e 's,query_,,' -e 's,.faa,,g' -e 's,_db,,'`.out
+    FIND_SPECIES_GENE ${i##*/}
     CUTOFF=`sed -n /$GENE/p $CUTOFF_FILE | sed -e 's,'$PREFIX'[0-9]* ,,'`
 # With all those variables set we run our hmmsearch
     hmmsearch --tblout $OUT_DIR/$OUT -T $CUTOFF $HMM_DIR/$HMM $i
