@@ -40,10 +40,6 @@ case $key in
   HMM_DIR="$2"
   shift # past argument
   ;;
-  -pre|--prefix)
-  PREFIX="$2"
-  shift # past argument
-  ;;
   *)
         # unknown option
   ;;
@@ -77,7 +73,7 @@ for i in $IN_DIR/*.faa
 # We set the cutoff score by finding the name in the cutoff file matching GENE and a space then we remove the gene name so only the number remains.
     HMM=$GENE.hmm
     FIND_SPECIES_GENE ${i##*/}
-    CUTOFF=`sed -n /$GENE/p $CUTOFF_FILE | sed -e 's,'$PREFIX'[0-9]* ,,'`
+    CUTOFF=`sed -n /$GENE/p $CUTOFF_FILE | sed -e 's,'$GENE' ,,'`
 # With all those variables set we run our hmmsearch
     hmmsearch --tblout $OUT_DIR/$OUT -T $CUTOFF $HMM_DIR/$HMM $i
 done

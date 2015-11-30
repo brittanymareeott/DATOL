@@ -6,12 +6,13 @@
 # It uses samtools faidx http://www.htslib.org to do the real work. This script just uses the text file
 # file names to set the input fasta file and output file name, and parallelizes the process using xargs.
 #
-# The script takes 3 arguments:
+# The script takes 4 arguments:
 # 1) -i | --input_dir - The directory containing the text files with the def-lines of the sequences to fetch.
 # 2) -o | --output_dir - The directory where the new fasta files should be written.
-# 3) -t | --trans - The directory containing the large fasta files to fetch the sequences from.
+# 3) -f | --fasta - The directory containing the large fasta files to fetch the sequences from.
+# 4) -t | --threads - The number of threads to use.
 #
-# Usage: get_seq -i ~/GreenAlgae/pepfromblast_txt -t ~/GreenAlgae/translations -o ~/GreenAlgae/pepfromblast_out
+# Usage: get_seq -i ~/GreenAlgae/pepfromblast_txt -t ~/GreenAlgae/translations -o ~/GreenAlgae/pepfromblast_out -t 24
 #
 # The input files should be names as follows:
 # genename_taxon_id_with_underscores.txt
@@ -36,8 +37,12 @@ case $key in
   OUT="$2"
   shift # past argument
   ;;
-  -t|--trans)
-  TRANS="$2"
+  -f|--fasta)
+  FASTA="$2"
+  shift # past argument
+  ;;
+  -t|--threads)
+  THREADS="$2"
   shift # past argument
   ;;
   *)
@@ -61,8 +66,9 @@ function FIND_SPECIES_GENE()
 # We need to export the function and variables so they can be used in the subshell
 export -f FIND_SPECIES_GENE
 export OUT
-export TRANS
+export FASTA
+export THREADS
 cd $INPUT
 # send all the text files into a bash subshell (run X subshells at a time) and run samtools faidx (a tools to pull fasta sequences
 # out of a fasta file based on the def lines and do it right quick) on the files, feeding each line from the file to samfiles one at a time.
-ls *.txt | xargs -n 1 -P 22 -I % bash -c 'FIND_SPECIES_GENE %; cat % | xargs samtools faidx $TRANS/$PEP_FILE > $OUT/$OUT_FILE;'
+ls *.txt | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/$OUT_FILE;'
