@@ -84,17 +84,19 @@ cd $INPUT/TopHits
 find *.txt | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
 cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/TopHits/PEP/$OUT_FILE; \
 cat % | xargs samtools faidx $FASTA/$CDS_FILE > $OUT/TopHits/CDS/$OUT_FILE;'
-# Concatenate all the sequences from each species and append the gene name to the start of each def line
+# Sort the output based on gene and rename files and def lines to just the species name
 # First the peptide files
 cd $OUT/TopHits/PEP
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-sed -i "s,>,>$GENE\___,g" %; \
-cat % >> $OUT/TopHits/$SPECIES"_PEP.fasta";'
+sed -i "s,>*\r,>$SPECIES,g" %; \
+mkdir -p $OUT/TopHits/PEP/$GENE; \
+mv % $OUT/TopHits/PEP/$GENE/$SPECIES".fas";'
 # Next the cds files
 cd $OUT/TopHits/CDS
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-sed -i "s,>,>$GENE\___,g" %; \
-cat % >> $OUT/TopHits/$SPECIES"_TRANSCRIPTS.fasta";'
+sed -i "s,>*,>$SPECIES,g" %; \
+mkdir -p $OUT/TopHits/CDS/$GENE; \
+mv % $OUT/TopHits/CDS/$GENE/$SPECIES".fas";'
 
 # Next lets do the Non-Top Hits
 cd $INPUT/OtherHits
@@ -107,10 +109,10 @@ cat % | xargs samtools faidx $FASTA/$CDS_FILE > $OUT/OtherHits/CDS/$OUT_FILE;'
 # First the peptide files
 cd $OUT/OtherHits/PEP
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-sed -i "s,>,>$GENE\___,g" %; \
+sed -i "s,>,>$SPECIES\___,g" %; \
 cat % >> $OUT/OtherHits/$SPECIES"_PEP.fasta";'
 # Next the cds files
 cd $OUT/OtherHits/CDS
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-sed -i "s,>,>$GENE\___,g" %; \
+sed -i "s,>,>$SPECIES\___,g" %; \
 cat % >> $OUT/OtherHits/$SPECIES"_TRANSCRIPTS.fasta";'
