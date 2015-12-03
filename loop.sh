@@ -101,29 +101,50 @@ echo Threads = "$THREADS" >> $MASTER_OUT/log.txt
 
 # First perform the blast searches
 echo "Starting big_blastp.sh run on $(date)" >> $MASTER_OUT/log.txt
+echo "big_blastp.sh -db $DBS -q $QUERY -o $MASTER_OUT/$WORK/big_blastp -t $THREADS" >> $MASTER_OUT/log.txt
+printf "***********   Starting Big blastp `date` ...\n"
 big_blastp.sh -db $DBS -q $QUERY -o $MASTER_OUT/$WORK/big_blastp -t $THREADS
 echo "Completed big_blastp.sh run on $(date)" >> $MASTER_OUT/log.txt
+printf "***********    Big blastp completed on `date` ...\n"
 # Next parse the blast output and generate text files for lookup
 echo "Starting PepFromBlast.py run on $(date)" >> $MASTER_OUT/log.txt
+echo "PepFromBlast.py --blast $MASTER_OUT/$WORK/big_blastp/ --outdir $MASTER_OUT/$WORK/pepfromblast/" >> $MASTER_OUT/log.txt
+printf "***********   Starting PepFromBlast on `date` ...\n"
 PepFromBlast.py --blast $MASTER_OUT/$WORK/big_blastp/ --outdir $MASTER_OUT/$WORK/pepfromblast/
 echo "Completed PepFromBlast.py run on $(date)" >> $MASTER_OUT/log.txt
+printf "***********   Completed PepFromBlast on `date` ...\n"
 # Get the sequences from the blast search using the text files from PepFromBlast.py
 echo "Starting get_seq.sh run on $(date)" >> $MASTER_OUT/log.txt
+echo "get_seq.sh -i $MASTER_OUT/$WORK/pepfromblast -o $MASTER_OUT/$WORK/get_seq -f $FASTA -t $THREADS" >> $MASTER_OUT/log.txt
+printf "***********   Starting get_seq.sh on `date` ...\n"
 get_seq.sh -i $MASTER_OUT/$WORK/pepfromblast -o $MASTER_OUT/$WORK/get_seq -f $FASTA -t $THREADS
 echo "Completed get_seq.sh run on $(date)" >> $MASTER_OUT/log.txt
+printf "***********   Completed get_seq.sh on `date` ...\n"
 # Perform hmmsearch using sequences just fetched
 echo "Starting hmm_from_pep.sh run on $(date)" >> $MASTER_OUT/log.txt
-hmm_from_pep.sh -hmm $HMM_DIR -c $CUTOFF_FILE -i $MASTER_OUT/$WORK/get_seq -o $MASTER_OUT/$WORK/hmmsearch
+echo "hmm_from_pep.sh -hmm $HMM_DIR -c $CUTOFF_FILE -i $MASTER_OUT/$WORK/get_seq -o $MASTER_OUT/$WORK/hmmsearch -t $THREADS" >> $MASTER_OUT/log.txt
+printf "***********   Starting hmmsearches on `date` ...\n"
+hmm_from_pep.sh -hmm $HMM_DIR -c $CUTOFF_FILE -i $MASTER_OUT/$WORK/get_seq -o $MASTER_OUT/$WORK/hmmsearch -t $THREADS
 echo "Completed hmm_from_pep.sh run on $(date)" >> $MASTER_OUT/log.txt
+printf "***********   Completed hmmsearches on `date` ...\n"
 # Parse the hmmsearch output to generate text files for lookup
 echo "Starting parse_hmm_search.py run on $(date)" >> $MASTER_OUT/log.txt
+echo "parse_hmm_search.py --hmm $MASTER_OUT/$WORK/hmmsearch/ --outdir $MASTER_OUT/$WORK/parse_hmm_search/" >> $MASTER_OUT/log.txt
+printf "***********   Starting parse_hmm_search.py on `date` ...\n"
 parse_hmm_search.py --hmm $MASTER_OUT/$WORK/hmmsearch/ --outdir $MASTER_OUT/$WORK/parse_hmm_search/
+printf "***********   Completed parse_hmm_search.py on `date` ...\n"
 echo "Completed parse_hmm_search.py run on $(date)" >> $MASTER_OUT/log.txt
 # Write out final sequence files from text files from parse_hmm_search.py
 echo "Starting write_cds_pep.sh run on $(date)" >> $MASTER_OUT/log.txt
+echo "write_cds_pep.sh -i $MASTER_OUT/$WORK/parse_hmm_search -o $MASTER_OUT/$WORK/write_cds_pep -f $FASTA -t $THREADS" >> $MASTER_OUT/log.txt
+printf "***********   Starting write_cds_pep.sh on `date` ...\n"
 write_cds_pep.sh -i $MASTER_OUT/$WORK/parse_hmm_search -o $MASTER_OUT/$WORK/write_cds_pep -f $FASTA -t $THREADS
+printf "***********   Completed write_cds_pep.sh on `date` ...\n"
 echo "Completed write_cds_pep.sh run on $(date)" >> $MASTER_OUT/log.txt
 # Generate coverage table
 echo "Starting gene_species_table.sh run on $(date)" >> $MASTER_OUT/log.txt
+echo "gene_species_table.sh -i $MASTER_OUT/$WORK/write_cds_pep/TopHits/CDS -o $MASTER_OUT" >> $MASTER_OUT/log.txt
+printf "***********   Starting gene_species_table.sh on `date` ...\n"
 gene_species_table.sh -i $MASTER_OUT/$WORK/write_cds_pep/TopHits/CDS -o $MASTER_OUT
+printf "***********   Completed gene_species_table.sh on `date` ...\n"
 echo "Completed gene_species_table.sh run on $(date)" >> $MASTER_OUT/log.txt

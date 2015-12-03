@@ -55,6 +55,7 @@ echo Input Directory = "$INPUT" >> $OUT/log.txt
 echo Output Directory = "$OUT" >> $OUT/log.txt
 echo Cut off file = "$CUTOFF_FILE" >> $OUT/log.txt
 echo HMM Directory = "$HMM_DIR" >> $OUT/log.txt
+echo Threads = "$THREADS" >> $OUT/log.txt
 
 function FIND_SPECIES_GENE()
 {
@@ -76,4 +77,4 @@ cd $INPUT
 ls *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
 HMM=$GENE".hmm"; \
 CUTOFF=$(sed -n /$GENE/p $CUTOFF_FILE | sed -e "s,$GENE ,,"); \
-hmmsearch --tblout $OUT/$OUT_FILE -T $CUTOFF $HMM_DIR/$HMM %;'
+hmmsearch --tblout $OUT/$OUT_FILE -T $CUTOFF $HMM_DIR/$HMM % 1> $OUT/stdout.txt 2> $OUT/stderr.txt;'
