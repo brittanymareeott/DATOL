@@ -3,9 +3,8 @@
 # Named variables. Every run needs the following defined:
 # 1) -c | --cutoff_file - The file defining cut off values for each gene
 # 2) -h | --hmm_dir - The directory containing the HMMs for each gene
-# 3) -in | --input_dir - The directory with the Peptide sequences produced by the previous step in the pipeline
-# 4) -out | --output_dir - The directory to put the output
-# 5) -pre | --prefix - The prefix of the gene names. Examples: KOG, CHLOG, BUSCO, NOG
+# 3) -i | --input_dir - The directory with the Peptide sequences produced by the previous step in the pipeline
+# 4) -o | --output_dir - The directory to put the output
 # Example:
 # hmm_from_pep.sh -c /home/mendezg/cegma/cutoff.txt -h /home/mendezg/cegma/hmm -i /home/mendezg/cegma_dinos/pepsfromblast -o /home/mendezg/cegma_dinos/hmmsearch_out -pre KOG
 
@@ -24,11 +23,11 @@ do
 key="$1"
 
 case $key in
-  -in|--input_dir)
+  -i|--input_dir)
   IN_DIR="$2"
   shift # past argument
   ;;
-  -out|--output_dir)
+  -o|--output_dir)
   OUT_DIR="$2"
   shift # past argument
   ;;
