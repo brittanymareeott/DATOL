@@ -2,7 +2,7 @@
 
 # Named variables. Every run needs the following defined:
 # 1) -c | --cutoff_file - The file defining cut off values for each gene
-# 2) -h | --hmm_dir - The directory containing the HMMs for each gene
+# 2) -hmm | --hmm_dir - The directory containing the HMMs for each gene
 # 3) -i | --input_dir - The directory with the Peptide sequences produced by the previous step in the pipeline
 # 4) -o | --output_dir - The directory to put the output
 # Example:
@@ -24,18 +24,18 @@ key="$1"
 
 case $key in
   -i|--input_dir)
-  IN_DIR="$2"
+  INPUT="$2"
   shift # past argument
   ;;
   -o|--output_dir)
-  OUT_DIR="$2"
+  OUT="$2"
   shift # past argument
   ;;
   -c|--cutoff_file)
   CUTOFF_FILE="$2"
   shift # past argument
   ;;
-  -h|--hmm_dir)
+  -hmm|--hmm_dir)
   HMM_DIR="$2"
   shift # past argument
   ;;
@@ -45,12 +45,11 @@ case $key in
 esac
 shift # past argument or value
 done
-echo hmm_from_pep.sh run on $(date) >> $OUT_DIR/log.txt
-echo Input Directory = "$IN_DIR" >> $OUT_DIR/log.txt
-echo Output Directory = "$OUT_DIR" >> $OUT_DIR/log.txt
-echo Cut off file = "$CUTOFF_FILE" >> $OUT_DIR/log.txt
-echo HMM Directory = "$HMM_DIR" >> $OUT_DIR/log.txt
-echo Gene Prefix = "$PREFIX" >> $OUT_DIR/log.txt
+echo hmm_from_pep.sh run on $(date) >> $OUT/log.txt
+echo Input Directory = "$INPUT" >> $OUT/log.txt
+echo Output Directory = "$OUT" >> $OUT/log.txt
+echo Cut off file = "$CUTOFF_FILE" >> $OUT/log.txt
+echo HMM Directory = "$HMM_DIR" >> $OUT/log.txt
 
 function FIND_SPECIES_GENE()
 {
@@ -59,11 +58,11 @@ function FIND_SPECIES_GENE()
         GENE=${SPLIT_FILE[0]}
         SPECIES_SPACED=${SPLIT_FILE[@]:1}
         SPECIES=${SPECIES_SPACED// /_}
-        OUT=$GENE'_'$SPECIES'.out'
+        OUT_FILE=$GENE'_'$SPECIES'.out'
 }
 
 # Loop through fasta files
-for i in $IN_DIR/*.faa
+for i in $INPUT/*.faa
   do
 # Set some variable:
 # We find the GENE name in the fasta file with some regular expressions. Specifically we are search for our prefix followed by numbers.
@@ -74,5 +73,5 @@ for i in $IN_DIR/*.faa
     FIND_SPECIES_GENE ${i##*/}
     CUTOFF=`sed -n /$GENE/p $CUTOFF_FILE | sed -e 's,'$GENE' ,,'`
 # With all those variables set we run our hmmsearch
-    hmmsearch --tblout $OUT_DIR/$OUT -T $CUTOFF $HMM_DIR/$HMM $i
+    hmmsearch --tblout $OUT/$OUT_FILE -T $CUTOFF $HMM_DIR/$HMM $i
 done

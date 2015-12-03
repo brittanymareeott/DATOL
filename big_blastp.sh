@@ -53,6 +53,7 @@ echo Threads = "$THREADS" >> $OUT/log.txt
 
 
 #Loop through all protein blast databases produced from transdecoder (based on them ending in .fa.transdecoder.pep.phr)
+cd $QUERY
 for i in $DBS/*.fa.transdecoder.pep.phr
   do
     DBI=${i##*/}
