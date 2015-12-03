@@ -10,20 +10,20 @@
 # gaps.
 # Example Input:
 # Root:
-#   Gene001:
-#     Homo_sapiens.fas
-#     Rattus_rattus.fas
-#     Procyon_lotor.fas
-#     Canis_domesticus.fas
-#   Gene002:
-#     Homo_sapiens.fas
-#     Procyon_lotor.fas
-#     Canis_domesticus.fas
-#   Gene003:
-#     Homo_sapiens.fas
-#     Rattus_rattus.fas
-#     Procyon_lotor.fas
-#     Canis_domesticus.fas
+#     Gene001:
+#         Homo_sapiens.fas
+#         Rattus_rattus.fas
+#         Procyon_lotor.fas
+#         Canis_domesticus.fas
+#     Gene002:
+#         Homo_sapiens.fas
+#         Procyon_lotor.fas
+#         Canis_domesticus.fas
+#     Gene003:
+#         Homo_sapiens.fas
+#         Rattus_rattus.fas
+#         Procyon_lotor.fas
+#         Canis_domesticus.fas
 #
 # This script takes two arguments:
 # 1) -i | --input_dir - The input directory as discussed above.
@@ -40,49 +40,47 @@ do
 key="$1"
 
 case $key in
-  -i|--input_dir)
-  INPUT="$2"
-  shift # past argument
-  ;;
-  -o|--output_dir)
-  OUT="$2"
-  shift # past argument
-  ;;
-  *)
-        # unknown option
-  ;;
+    -i|--input_dir)
+    INPUT="$2"
+    shift # past argument
+    ;;
+    -o|--output_dir)
+    OUT="$2"
+    shift # past argument
+    ;;
+    *)
+         # unknown option
+    ;;
 esac
 shift # past argument or value
 done
 
-mkdir $OUT 2>/dev/null
-mkdir $OUT/tmp 2>/dev/null
-rm $OUT/tmp/* 2>/dev/null
-rm $OUT/big_fat_table.csv 2>/dev/null
+mkdir -p $OUT
+mkdir -p $OUT/tmp
+rm $OUT/tmp/* 2> /dev/null
+rm $OUT/big_fat_table.csv 2> /dev/null
 cd $INPUT
-SPECIES=( $(find . -name '*_*.fas' -type f -exec basename {} \; | sort | uniq | sed 's,.fas,,') )
+SPECIES=( $(find . -name '*.fas' -type f -exec basename {} \; | sort | uniq | sed 's,.fas,,') )
 for j in "${SPECIES[@]}"
 do
-echo -n $j, > $OUT/tmp/$j.out
- for i in *
-  do
-  if [ -d $i ]
-   then cd $i
-   if [ -e $j.fas ]
-    then
-     echo -n "1," >> $OUT/tmp/$j.out
-    else
-     echo -n "0," >> $OUT/tmp/$j.out
-   fi
-  cd $INPUT
-  fi
- done
- echo   >> $OUT/tmp/$j.out
+    echo -n $j, > $OUT/tmp/$j.out
+    for i in *
+        do DIR=$PWD
+            if [ -d $i ]
+                then cd $i
+                    if [ -e $j.fas ]
+                        then
+                            echo -n "1," >> $OUT/tmp/$j.out
+                        else
+                            echo -n "0," >> $OUT/tmp/$j.out
+                    fi
+                cd $DIR
+            fi
+        done
+    echo     >> $OUT/tmp/$j.out
 done
-cat $OUT/tmp/*.out > $OUT/tmp/no_gene_names.out
-echo Species/ */ > $OUT/tmp/gene_names.out
-cat $OUT/tmp/gene_names.out $OUT/tmp/no_gene_names.out > $OUT/big_fat_table.csv
-sed -i 's,\/\s,\,,g' $OUT/big_fat_table.csv
-sed -i 's,\/,,g' $OUT/big_fat_table.csv
+echo Species * > $OUT/tmp/gene_names.txt
+sed -i 's,\s,\,,g' $OUT/tmp/gene_names.txt
+cat $OUT/tmp/*.out > $OUT/tmp/no_gene_names.txt
+cat $OUT/tmp/gene_names.txt $OUT/tmp/no_gene_names.txt > $OUT/big_fat_table.csv
 rm $OUT/tmp/*
-
