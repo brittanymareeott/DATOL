@@ -60,27 +60,24 @@ mkdir -p $OUT/tmp
 rm $OUT/tmp/* 2> /dev/null
 rm $OUT/big_fat_table.csv 2> /dev/null
 cd $INPUT
-SPECIES=( $(find . -name '*.fas' -type f -exec basename {} \; | sort | uniq | sed 's,.fas,,') )
-for j in "${SPECIES[@]}"
-do
-    echo -n $j, > $OUT/tmp/$j.out
-    for i in *
-        do DIR=$PWD
-            if [ -d $i ]
-                then cd $i
-                    if [ -e $j.fas ]
-                        then
-                            echo -n "1," >> $OUT/tmp/$j.out
-                        else
-                            echo -n "0," >> $OUT/tmp/$j.out
-                    fi
-                cd $DIR
-            fi
-        done
-    echo     >> $OUT/tmp/$j.out
-done
-echo Species * > $OUT/tmp/gene_names.txt
-sed -i 's,\s,\,,g' $OUT/tmp/gene_names.txt
-cat $OUT/tmp/*.out > $OUT/tmp/no_gene_names.txt
-cat $OUT/tmp/gene_names.txt $OUT/tmp/no_gene_names.txt > $OUT/big_fat_table.csv
+SPECIES=('Gene ID')
+SPECIES+=( $(find . -name '*.fas' -type f -exec basename {} \; | sort | uniq | sed 's,.fas,,') )
+(IFS=",$IFS"; printf '%s\n' "${SPECIES[*]}" >> $OUT/tmp/species_names.txt)
+for GENE in *
+    do 
+        cd $GENE
+        ARRAY=("$GENE")
+        for TAXON in ${SPECIES[@]:1}
+            do
+                if [ -e $TAXON.fas ]
+                    then
+                        ARRAY+=('1')
+                    else
+                        ARRAY+=('0')
+                fi
+            done
+        (IFS=",$IFS"; printf '%s\n' "${ARRAY[*]}" >> $OUT/tmp/$GENE.out)
+        cd $INPUT
+    done
+cat $OUT/tmp/species_names.txt $OUT/tmp/*.out > $OUT/gene_species_table.csv
 rm $OUT/tmp/*
