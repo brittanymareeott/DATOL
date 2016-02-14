@@ -88,7 +88,7 @@ cat % | xargs samtools faidx $FASTA/$CDS_FILE > $OUT/TopHits/CDS/$OUT_FILE;'
 # First the peptide files
 cd $OUT/TopHits/PEP
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-sed -i "s,>.*\r,>$SPECIES,g" %; \
+sed -i "s,>.*,>$SPECIES,g" %; \
 mkdir -p $OUT/TopHits/PEP/$GENE; \
 mv % $OUT/TopHits/PEP/$GENE/$SPECIES".fas";'
 # Next the cds files
