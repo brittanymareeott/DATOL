@@ -71,4 +71,5 @@ export THREADS
 cd $INPUT
 # send all the text files into a bash subshell (run X subshells at a time) and run samtools faidx (a tools to pull fasta sequences
 # out of a fasta file based on the def lines and do it right quick) on the files, feeding each line from the file to samfiles one at a time.
-ls *.txt | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/$OUT_FILE;'
+FILE=($(find $INPUT -type f -exec basename {} \; ))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; echo $SPECIES; cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/$OUT_FILE;'
