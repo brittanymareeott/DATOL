@@ -63,7 +63,7 @@ function FIND_SPECIES_GENE()
         SPECIES_SPACED=${SPLIT_FILE[@]:1}
         SPECIES=${SPECIES_SPACED// /_}
         PEP_FILE=$SPECIES'.fa.transdecoder.pep'
-        CDS_FILE=$SPECIES'.fa.transdecoder.cds'
+        CDS_FILE=$SPECIES'.deg.fas'
         OUT_FILE=$GENE'_'$SPECIES'.faa'
         
 }
