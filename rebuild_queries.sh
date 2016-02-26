@@ -6,7 +6,7 @@
 #
 # For each gene, this script takes lists of outlier sequences from long_branches.py and distance_matrix_zscore.py
 # combines them into a master list used to specify which sequences will be used to generate new query files. After
-# this one should run new_score_genes.sh to generate HMMs and create a list of HMMsearch bitscore cut off scores.
+# this, one should run new_score_genes.sh to generate HMMs and create a list of HMMsearch bitscore cut off scores.
 #
 #Code to handle the named variable inputs:
 while [[ $# > 1 ]]
