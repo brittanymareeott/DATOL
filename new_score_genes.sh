@@ -71,8 +71,15 @@ function SPLIT_MULTI_FASTA() {
                     FIND_SPECIES $LINE
                     echo $LINE >> $OUTPUT/$SPECIES".fsa"
                 else
-                    echo $LINE >> $OUTPUT/$SPECIES".fsa"
+                    if [[ $LINE == *\* ]]
+                        then
+                            NEW_LINE=${LINE/\*/__STOP_CODON__}
+                            echo $NEW_LINE >> $OUTPUT/$SPECIES".fsa"
+                        else
+                            echo $LINE >> $OUTPUT/$SPECIES".fsa"
+                    fi
             fi
+            sed -i 's,__STOP_CODON__,\*,g' $OUTPUT/$SPECIES".fsa"
         done < $INPUT
 }
 
@@ -85,13 +92,7 @@ mkdir -p $OUT/tmp
 mkdir -p $OUT/hmms
 # move into the input directory
 cd $IN
-# make variables and funtions available to our subshells
-export EXT
-export OUT
-export IN
-export -f SPLIT_MULTI_FASTA
-export -f FIND_SPECIES
-# feed everything ending in specified extension into its own sub shell to calculate scores.
+
 # Inside each subshell we are first breaking each multi-fasta file into individual 
 # fasta files for each sequence, then creating a list of all those single sequence
 # files. We then loop through that list and create an alignment for every combination
@@ -100,30 +101,43 @@ export -f FIND_SPECIES
 # The bitscores from all of these searches is averaged and then divided by 2 to generate
 # a cut off score for that gene. The averages are saved to averages.txt and the cutoff scores
 # are saved to score_cutoffs.txt.
+function CALC_SCORES() {
+    GENE=${FILE/.$EXT/}
+    mkdir $OUT/tmp/$GENE
+    SPLIT_MULTI_FASTA $FILE $OUT
+    cd $OUT/tmp/$GENE
+    ALIGNMENT=(*.fsa)
+    for j in ${ALIGNMENT[@]}
+        do ARRAY_BOB=(${ALIGNMENT[@]/$j})
+            cat ${ARRAY_BOB[@]} > allminus_${j/fsa/fasta}
+            mafft --auto allminus_${j/fsa/fasta} > allminus_${j/fsa/fa}
+            hmmbuild allminus_${j/fsa/hmm} allminus_${j/fsa/fa}
+            hmmsearch allminus_${j/fsa/hmm} $j > ${j/fsa/out}
+        done
+    MATHS=0
+    for h in *.out
+        do SCORE=($(sed -n "15 p" $h))
+            NUMBER=${SCORE[1]}
+            MATHS=$(echo $NUMBER + $MATHS | bc -l)
+            ITEMS=$(ls *.out | wc -l)
+        done
+    AVERAGE=$(echo "scale=3; $MATHS/$ITEMS" | bc -l)
+    CUTOFF=$(echo "scale=3; $AVERAGE/2" | bc -l)
+    echo $GENE $AVERAGE >> $OUT/average.txt
+    echo $GENE $CUTOFF >> $OUT/score_cutoffs.txt
+}
+# make variables and funtions available to our subshells
+export EXT
+export OUT
+export IN
+export -f SPLIT_MULTI_FASTA
+export -f FIND_SPECIES
+export -f CALC_SCORES
+
+# Feed everything ending in specified extension into its own sub shell to calculate scores.
+# Then create alignments and build HMMs from the alignments.
 find *.$EXT | xargs -n 1 -P $THREADS -I % bash -c 'FILE=% ; \
-    GENE=${FILE/.$EXT/} ; \
-    mkdir $OUT/tmp/$GENE ; \
-    SPLIT_MULTI_FASTA % $OUT ; \
-    cd $OUT/tmp/$GENE ; \
-    ALIGNMENT=(*.fsa) ; \
-    for j in ${ALIGNMENT[@]} ; \
-        do ARRAY_BOB=(${ALIGNMENT[@]/$j}) ; \
-            cat ${ARRAY_BOB[@]} > allminus_${j/fsa/fasta} ; \
-            mafft --auto allminus_${j/fsa/fasta} > allminus_${j/fsa/fa} ; \
-            hmmbuild allminus_${j/fsa/hmm} allminus_${j/fsa/fa} ; \
-            hmmsearch allminus_${j/fsa/hmm} $j > ${j/fsa/out} ; \
-        done ; \
-    MATHS=0 ; \
-    for h in *.out ; \
-        do SCORE=($(sed -n "15 p" $h)) ; \
-            NUMBER=${SCORE[1]} ; \
-            MATHS=$(echo $NUMBER + $MATHS | bc -l) ; \
-            ITEMS=$(ls *.out | wc -l) ; \
-        done ; \
-    AVERAGE=$(echo "scale=3; $MATHS/$ITEMS" | bc -l) ; \
-    CUTOFF=$(echo "scale=3; $AVERAGE/2" | bc -l) ; \
-    echo $GENE $AVERAGE >> $OUT/average.txt ; \
-    echo $GENE $CUTOFF >> $OUT/score_cutoffs.txt ; \
+    CALC_SCORES ; \
     cd $IN ; \
     mafft --auto $FILE > $OUT/hmms/$GENE.fasta ; \
     hmmbuild $OUT/hmms/$GENE.hmm $OUT/hmms/$GENE.fasta'
