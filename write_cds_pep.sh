@@ -73,9 +73,7 @@ export OUT
 export FASTA
 
 # We need to create our output directories
-mkdir $OUT 2> /dev/null
-mkdir $OUT/TopHits $OUT/OtherHits 2> /dev/null
-mkdir $OUT/TopHits/CDS $OUT/TopHits/PEP $OUT/OtherHits/PEP $OUT/OtherHits/CDS 2> /dev/null
+mkdir -p $OUT/TopHits/CDS $OUT/TopHits/PEP $OUT/OtherHits/PEP/tmp $OUT/OtherHits/CDS/tmp 2> /dev/null
 
 # First lets do the Top Hits
 cd $INPUT/TopHits
@@ -103,16 +101,16 @@ cd $INPUT/OtherHits
 # send all the text files into a bash subshell (run X subshells at a time) and run samtools faidx (a tools to pull fasta sequences
 # out of a fasta file based on the def lines and do it right quick) on the files, feeding each line from the file to samfiles one at a time.
 find *.txt | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
-cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/OtherHits/PEP/$OUT_FILE; \
-cat % | xargs samtools faidx $FASTA/$CDS_FILE > $OUT/OtherHits/CDS/$OUT_FILE;'
+cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/OtherHits/PEP/tmp/$OUT_FILE; \
+cat % | xargs samtools faidx $FASTA/$CDS_FILE > $OUT/OtherHits/CDS/tmp/$OUT_FILE;'
 # Concatenate all the sequences from each species and append the gene name to the start of each def line
 # First the peptide files
-cd $OUT/OtherHits/PEP
+cd $OUT/OtherHits/PEP/tmp
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
 sed -i "s,>,>$SPECIES\___,g" %; \
-cat % >> $OUT/OtherHits/$SPECIES"_PEP.fasta";'
+cat % >> $OUT/OtherHits/PEP/$GENE".fasta";'
 # Next the cds files
-cd $OUT/OtherHits/CDS
+cd $OUT/OtherHits/CDS/tmp
 find *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
 sed -i "s,>,>$SPECIES\___,g" %; \
-cat % >> $OUT/OtherHits/$SPECIES"_TRANSCRIPTS.fasta";'
+cat % >> $OUT/OtherHits/CDS/$GENE".fasta";'
