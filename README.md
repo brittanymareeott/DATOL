@@ -18,7 +18,7 @@ Necessary data inputs are fasta files of open reading frames for the CDS and cor
 
 ### B. Installation ###
 
-Install: HMMER 3.1, MAFFT 7, RAxML 8, SAMTools, NCBI BLAST+, TrimAL 1.2, Python 2.7
+Install: HMMER 3.1, MAFFT 7, RAxML 8, SAMTools, usearch v8.1, TrimAL 1.2, Python 2.7
 Install Python libraries: Bio, numpy, matplotlib, ete2
 
 Add scripts to bash PATH
@@ -33,28 +33,18 @@ If you are starting from transcriptomic assemblies you will need to find open re
 
 If you are starting from genomic data you will need the cds and protein reads generated after annotation. We provide a script to generate cds sequences using a gff file and fasta encoded genomic assembly.
 
-Start by making a blast database of your protein fasta files.
-
-    makeblastdb -dbtype prot -in [yourfile] -out [species_name_alphanumeric_and_underscores_only]
-
-If you have a lot of databases to make we suggest using xargs to parralellize the process:
-
-    find [input directory] *[file extension] | xargs -n 1 -P [number of threads available] -I % makeblastdb -dbtype prot -in % -out %
-
 The first pipeline script to use is loop.sh
 
 #### loop.sh ####
 
 You need to generate several input datafiles before running this script:
 1) ORFs available for both DNA and peptides for each species in fasta format. A separate fasta formatted file for each species.
-2) blast databases for each peptide fasta file
-3) query sequences in fasta format. A separate fasta file for each gene
-4) HMMs for each query gene
-5) A cutoff file with a bitscore cutoff specified for each gene
+2) query sequences in fasta format. A separate fasta file for each gene
+3) HMMs for each query gene
+4) A cutoff file with a bitscore cutoff specified for each gene
 
 Scripts called by this script:
-+ big_blastp.sh - This performs the blast searches, searching for each gene of interest against the blast databases of your species of interest
-+ PepFromBlast.py - This parses the blast result files, producing a text file for each gene-species combo needed to look up the sequence
++ big_ublastp.sh - This performs the ublast searches, searching for each gene of interest against the blast databases of your species of interest
 + get_seq.sh - This uses the text file from PepFromBlast.py to write sequence files
 + hmm_from_pep.sh - This performs and hmmsearch on each sequence from the blast search to filter the results based on the cutoff scores
 + parse_hmm_search.py - This generates a text file form the hmmsearch output needed to lookup the sequences
@@ -62,19 +52,18 @@ Scripts called by this script:
 + gene_species_table.sh - This generates a table (in csv format) indicating the presence or absence of genes in the species searched.
 
 Named variables. Every run needs the following defined:
-+ -f | --fasta_dir - The directory containing the large fasta files to fetch the sequences from.
-+ -db | --database_dir - The directory containing the blast databases of transcriptome ORFs. Each database should be named in the format species.fa.transdecoder.pep
-+ -q | --query_dir - The directory containing the fasta files for each gene to use as query terms. Each gene should have a separate fasta file
-+ -hmm | --hmm_dir - The directory containing the HMMs for each gene
-+ -c | --cutoff_file - The file defining cut off values for each gene
+
++ -q | --query_dir - The directory containing query directory, hmm directory, and scores_cutoff.txt file.
++ -d | --dna_dir - The directory containing the open reading frames (DNA sequences).
++ -p | --protein_dir - The directory containing the translated open reading frames (protein sequences).
 + -o | --output_dir - The directory to put the output
 + -t | --threads - How many threads to use.
 
 Example:
 
-    loop.sh -f ~/mydata/mytranslations -db ~/mydata/myblastdatabases -q ~/pipeline/data/fasta -hmm ~/pipeline/data/hmms -c ~/pipeline/scores_cutoff.txt -o ~/myoutput/loop1 -t 24
+    loop.sh -d ~/mydata/dna -p ~/mydata/prot -q ~/pipeline/queries -o ~/myoutput/loop1 -t 32
 
-When loop.sh is completed you need to examine the gene_species_table.csv file stored in your output directory. This table is a spreadsheet showing species in columns and genes in rows. If a gene was found for a given species a "1" is listed. If the gene was not found a "0" is listed. Using this information choose a set of species and genes no or few gaps in the data to use in the next steps. Save the species names to a text file and the gene names to a separate text file. The text files should have one species/gene on each line. When you have prepared those lists you can launch the next script: pretree_loop.sh
+When loop.sh is completed you need to examine the gene_species_table.csv file stored in your output directory. This table is a spreadsheet showing species in columns and genes in rows. If a gene was found for a given species a "1" is listed. If the gene was not found a "0" is listed. Using this information choose a set of species and genes with no or few gaps in the data to use in the next steps. Save the species names to a text file and the gene names to a separate text file. The text files should have one species/gene on each line. When you have prepared those lists you can launch the next script: pretree_loop.sh
 
 #### pretree_loop.sh ####
 
