@@ -80,7 +80,7 @@ export -f convertsecs
 # find all the folders and launch a separate bash shell for each. In each shell concatenate the sequences then align them
 printf "%s\n" "${GENES[@]:1}" | xargs -n 1 -P $THREADS -I %x bash -c 'cd $INPUT/%x; \
     cat *$EXT > $OUT/%x_combined.fasta; \
-    mafft --quiet --thread 1 --auto $OUT/%x_combined.fasta > $OUT/%x.fas; \
+    mafft --thread 1 --quiet --auto $OUT/%x_combined.fasta > $OUT/%x.fas; \
     COUNT=$( find $OUT/*.fas -type f -size +1c -exec basename {} \; | wc -l ); \
     PROGRESS=$( math "$COUNT / $TOTAL *100" ); \
     tx=$( date +%s ); \

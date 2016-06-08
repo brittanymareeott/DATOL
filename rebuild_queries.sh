@@ -29,13 +29,17 @@ esac
 shift # past argument or value
 done
 
-WORKING=$( find $INPUT -name 'Working_Dir_*' -exec basename {} \; )
-mkdir -p $INPUT/$WORKING/rebuilt_queries/cat_lists
-mkdir -p $INPUT/$WORKING/rebuilt_queries/query
+# find working directory name
+LOOP_NUMBER=$(find $INPUT -path "$INPUT/loop*" -prune | wc -l )
+LOOP_DIR=$INPUT/"loop_"$LOOP_NUMBER"_out/"
+WORKING=$INPUT/"loop_"$LOOP_NUMBER"_out/tmp"
+echo Working Directory = "$WORKING" >> $INPUT/log.txt
+mkdir -p $WORKING/rebuilt_queries/cat_lists
+mkdir -p $LOOP_DIR/rebuilt_queries/query
 
 function get_good() {
-    cat $INPUT/$WORKING/long_branches/CDS/longbranch_taxa.$GENE.txt $INPUT/$WORKING/long_branches/PEP/longbranch_taxa.$GENE.txt $INPUT/$WORKING/dist_m_zscore/CDS/outlier_taxa.$GENE.txt $INPUT/$WORKING/dist_m_zscore/PEP/outlier_taxa.$GENE.txt > $INPUT/$WORKING/rebuilt_queries/cat_lists/$GENE.txt
-    FILE=$INPUT/$WORKING/rebuilt_queries/cat_lists/$GENE.txt
+    cat $WORKING/long_branches/CDS/longbranch_taxa.$GENE.txt $WORKING/long_branches/PEP/longbranch_taxa.$GENE.txt $WORKING/dist_m_zscore/CDS/outlier_taxa.$GENE.txt $WORKING/dist_m_zscore/PEP/outlier_taxa.$GENE.txt > $WORKING/rebuilt_queries/cat_lists/$GENE.txt
+    FILE=$WORKING/rebuilt_queries/cat_lists/$GENE.txt
     #for each gene do
     BAD_SPECIES=()
     while read LINE
@@ -46,8 +50,8 @@ function get_good() {
                     BAD_SPECIES+=("$SPECIES")
             fi
         done < $FILE
-    SEQS=$INPUT/$WORKING/subset_sorted/PEP/$GENE
-    AVAILABLE_SPECIES=($(find $SEQS -type f -exec basename {} \; ))
+    SEQS=$LOOP_DIR/sequences/TopHits/PEP/$GENE
+    AVAILABLE_SPECIES=($(find $SEQS -type f | sed 's#.*/##' ))
     GOOD_SPECIES=()
     for AV_SPECIES in ${AVAILABLE_SPECIES[@]}
         do
@@ -57,17 +61,22 @@ function get_good() {
             fi
         done
     cd $SEQS
-    cat ${GOOD_SPECIES[@]} > $INPUT/$WORKING/rebuilt_queries/query/$GENE.faa
-    cd $INPUT/$WORKING/rebuilt_queries/query/
+    if [[ ${#GOOD_SPECIES[@]} < 1 ]]; then
+        printf "%s\n" "$GENE" >> $WORKING/rebuilt_queries/no_good_species.txt
+    else
+        cat ${GOOD_SPECIES[@]} > $LOOP_DIR/rebuilt_queries/query/$GENE.fas
+        cd $LOOP_DIR/rebuilt_queries/query/
     # This is necessary to make the formatting of these files match that of the original input sequences
     # so the new_score_genes.sh script will parse the def lines correctly.
-    sed -i "s,\(>[0-9A-Za-z_.|]*\),\1___$GENE,g" $GENE".faa"
+        sed -i "s,\(>[0-9A-Za-z_.|]*\),\1___$GENE,g" $GENE".fas"
+    fi
 }
 
-FILE_DIR=$INPUT/$WORKING/subset_sorted/PEP
-GENES=($(find $FILE_DIR -not -name 'PEP' -type d -exec basename {} \; ))
+FILE_DIR=$LOOP_DIR/tmp/subset_sorted/CDS
+GENES=($(find $FILE_DIR -not -name 'CDS' -type d | sed 's#.*/##' ))
 export -f get_good
 export INPUT
 export WORKING
-printf "%s\n" "${GENES[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'GENE=% ;\
+export LOOP_DIR
+printf "%s\n" "${GENES[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'GENE=% ; \
     get_good'

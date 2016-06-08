@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # This script takes as input a directory, like that created by cleanup_explode_sort.sh,
-# with directories for each gene with individual fasta files within each gene directory 
+# with directories for each gene with individual fasta files within each gene directory
 # named for the species the sequence came from. It outputs a table in .csv format that
 # displays 0/1 to indicate the absence or presence of a gene (column) for a species
 # (row). I generally import this into Excel, transpose the table, and add percentage
@@ -56,15 +56,15 @@ shift # past argument or value
 done
 
 mkdir -p $OUT
-mkdir -p $OUT/tmp
-rm $OUT/tmp/* 2> /dev/null
+mkdir -p $OUT/tmp/gene_species_table
+rm $OUT/tmp/gene_species_table/* 2> /dev/null
 rm $OUT/big_fat_table.csv 2> /dev/null
 cd $INPUT
 SPECIES=('Gene ID')
-SPECIES+=( $(find . -name '*.fas' -type f -exec basename {} \; | sort | uniq | sed 's,.fas,,') )
-(IFS=",$IFS"; printf '%s\n' "${SPECIES[*]}" >> $OUT/tmp/species_names.txt)
+SPECIES+=( $(find . -name '*.fas' -type f | sed 's#.*/##' | sort | uniq | sed 's,.fas,,') )
+(IFS=",$IFS"; printf '%s\n' "${SPECIES[*]}" >> $OUT/tmp/gene_species_table/species_names.txt)
 for GENE in *
-    do 
+    do
         cd $GENE
         ARRAY=("$GENE")
         for TAXON in ${SPECIES[@]:1}
@@ -76,8 +76,8 @@ for GENE in *
                         ARRAY+=('0')
                 fi
             done
-        (IFS=",$IFS"; printf '%s\n' "${ARRAY[*]}" >> $OUT/tmp/$GENE.out)
+        (IFS=",$IFS"; printf '%s\n' "${ARRAY[*]}" >> $OUT/tmp/gene_species_table/$GENE.out)
         cd $INPUT
     done
-cat $OUT/tmp/species_names.txt $OUT/tmp/*.out > $OUT/gene_species_table.csv
-rm $OUT/tmp/*
+cat $OUT/tmp/gene_species_table/species_names.txt $OUT/tmp/gene_species_table/*.out > $OUT/gene_species_table.csv
+rm $OUT/tmp/gene_species_table/*

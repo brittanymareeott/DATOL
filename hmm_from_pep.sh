@@ -74,7 +74,8 @@ export HMM_DIR
 export CUTOFF_FILE
 # launch hmmsearch runs, one for each thread
 cd $INPUT
-ls *.faa | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
+FILE=($(find $INPUT -type f | sed 's#.*/##' ))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; \
 HMM=$GENE".hmm"; \
 CUTOFF=$(sed -n /$GENE/p $CUTOFF_FILE | sed -e "s,$GENE ,,"); \
-hmmsearch --tblout $OUT/$OUT_FILE -T $CUTOFF $HMM_DIR/$HMM % 1> $OUT/stdout.txt 2> $OUT/stderr.txt;'
+hmmsearch --tblout $OUT/$OUT_FILE -T $CUTOFF $HMM_DIR/$HMM % '

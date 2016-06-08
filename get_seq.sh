@@ -19,7 +19,7 @@
 # The first part is the gene name/identifier. This must not contain underscores or periods.
 # The second part is the species name/identifier. This can contain underscores or period.
 # There must be a file extension at the end of the file name.
-# 
+#
 # The contents of the file should contain a fasta def line on each line. The script PepFromBlast.py generates
 # the input text file expected by this script.
 
@@ -41,6 +41,10 @@ case $key in
   FASTA="$2"
   shift # past argument
   ;;
+  -r|--report)
+  REPORT="$2"
+  shift # past argument
+  ;;
   -t|--threads)
   THREADS="$2"
   shift # past argument
@@ -60,7 +64,7 @@ function FIND_SPECIES_GENE()
         GENE=${SPLIT_FILE[0]}
         SPECIES_SPACED=${SPLIT_FILE[@]:1}
         SPECIES=${SPECIES_SPACED// /_}
-        PEP_FILE=$SPECIES'.fa.transdecoder.pep'
+        PEP_FILE=$SPECIES'.fasta'
         OUT_FILE=$GENE'_'$SPECIES'.faa'
 }
 # We need to export the function and variables so they can be used in the subshell
@@ -68,8 +72,39 @@ export -f FIND_SPECIES_GENE
 export OUT
 export FASTA
 export THREADS
+export INPUT
+export REPORT
 cd $INPUT
+# First we need to create index files for each fasta file. faidx will do this on the fly on its own, but when we are doing this in a multithreaded
+# process as we do below then we can encounter times when the index creation is triggered and then another thread accesses that index before it
+# has been completed. This leads to errors where the desired sequence can not be found. So we'll just make the indexes first.
+printf "***********   Building Fasta Indexes on `date` ...\n"
+FASTA_FILES=($(find $FASTA/*.fasta -type f))
+printf "%s\n" "${FASTA_FILES[@]}" | xargs -n 1 -P $THREADS -I % samtools faidx %
+
+# Now we need to convert the output from ublast to a non-redundant list.
+printf "***********   Creating Non-Redundant Lists on `date` ...\n"
+FILE=($(find -name "*.txt" -type f | sed 's#.*/##' ))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'IN=%; \
+    if [ -s $IN ]; \
+        then cat $IN | sort -u > $INPUT/${IN/txt/list}; \
+    fi'
+
 # send all the text files into a bash subshell (run X subshells at a time) and run samtools faidx (a tools to pull fasta sequences
 # out of a fasta file based on the def lines and do it right quick) on the files, feeding each line from the file to samfiles one at a time.
-FILE=($(find $INPUT -type f -exec basename {} \; ))
-printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; cat % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/$OUT_FILE;'
+printf "***********   Writing Protein Files on `date` ...\n"
+FILE=($(find -name "*.list" -type f | sed 's#.*/##' ))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % bash -c 'FIND_SPECIES_GENE %; sed -e "s/^/\"/g" -e "s/$/\"/g" % | xargs samtools faidx $FASTA/$PEP_FILE > $OUT/$OUT_FILE;\
+ROW=\<\!--ROW_"$SPECIES"--\> ;\
+COUNT=$(wc -l < %);\
+sed -i "s,$ROW,<td class=\"ublast\">$COUNT</td>$ROW," $REPORT/genes/$GENE".html";\
+ROW=\<\!--ROW_"$GENE"--\>;\
+sed -i "s,$ROW,<td class=\"ublast\">$COUNT</td>$ROW," $REPORT/species/$SPECIES".html"'
+
+# Add header column to gene report files and fill in zero counts in species and gene tables
+cd $REPORT/genes
+FILE=($(find *.html -type f | sed 's#.*/##'))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % sed -i "s,\(<\!--THEAD-->\),<th>ublast hits</th>\1,;s,</a></td><\!,</a></td><td class='ublast'>0</td><\!," %
+cd $REPORT/species
+FILE=($(find *.html -type f -exec basename {} \;))
+printf "%s\n" "${FILE[@]}" | xargs -n 1 -P $THREADS -I % sed -i "s,\(<\!--THEAD-->\),<th>ublast hits</th>\1</tr>,;s,</a></td><\!,</a></td><td class='ublast'>0</td><\!," %

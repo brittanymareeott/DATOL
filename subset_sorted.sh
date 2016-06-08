@@ -8,11 +8,12 @@
 # like that produced by write_cds_pep.sh and and copies just those
 # species and genes in the lists to a new directory with the same structure.
 
-# This script takes four arguments:
+# This script takes five arguments:
 # 1) -i | --input_dir - The input directory as discussed above.
 # 2) -o | --output_dir - The directory in which to write the the new genes directories and fasta files.
 # 3) -s | --species_list - A text file containing a species name on each line.
 # 4) -g | --gene_list - A text file containing a gene on each line.
+# 5) -p | --paralogs - [OPTIONAL] A directory containing files specifying sequences that have been identified as paralogous. The directory should contain text files for each gene titled in the format outlier_taxa.GENE.txt containing a species name on each line.
 #
 # Example Usage: subset_sorted.sh -i /home/mendezg/crawly_things/all_sorted -o /home/mendezg/crawly_things/subset_sorted -s crawliest_species.txt -g best_genes.txt
 #
@@ -37,6 +38,10 @@ case $key in
   ;;
   -o|--out_dir)
   OUT="$2"
+  shift # past argument
+  ;;
+  -p|--paralogs)
+  PARALOGS="$2"
   shift # past argument
   ;;
   *)
@@ -79,30 +84,39 @@ convertsecs() {
     printf "%02dh %02dm %02ds\n" $h $m $s
 }
 # loop through input directory and copy genes and species based on whether they are in the species and gene lists
-mkdir $OUT 2>/dev/null
+mkdir -p $OUT
 cd $INPUT
 TOTAL=${#GENES[@]}
 COUNT=0
 SECONDS=0
 for i in *
     do
-        if [ -d $i ]
-            then 
-                cd $i
-                if [ $( ARRAY_CONTAINS GENES $i && echo yes || echo no ) == yes  ]
-                    then
-                        GENE=${PWD##*/}
-                        mkdir -p $OUT/$GENE
-                        for g in *.fas
-                            do
-                                ARRAY_CONTAINS SPECIES ${g/.fas/} && cp $g $OUT/$GENE #&& echo ${g/.fas/} copied || echo ${g/.fas/} not copied                           
-                            done
+        if [ -d $i ]; then
+            cd $i
+            if [ $( ARRAY_CONTAINS GENES $i && echo yes || echo no ) == yes  ]; then
+                GENE=${PWD##*/}
+                mkdir -p $OUT/$GENE
+                for g in *.fas; do
+                    if [ -z $PARALOGS  ]; then
+                        ARRAY_CONTAINS SPECIES ${g/.fas/} && cp $g $OUT/$GENE
+                    else
+                        PARA_FILE=$PARALOGS/outlier_taxa.$GENE.txt
+                        if [ -f $PARA_FILE ]; then
+                            PARA_ARRAY=($(cat $PARA_FILE))
+                            if [ $( ARRAY_CONTAINS PARA_ARRAY ${g/.fas/} && echo yes || echo no ) == no  ]; then
+                                ARRAY_CONTAINS SPECIES ${g/.fas/} && cp $g $OUT/$GENE
+                            fi
+                        else
+                            ARRAY_CONTAINS SPECIES ${g/.fas/} && cp $g $OUT/$GENE
+                        fi
+                    fi
+                done
                 COUNT=$( math $COUNT + 1 )
                 PROGRESS=$( math "$COUNT / $TOTAL *100" )
                 REMAINING=$( math "(100-$PROGRESS)*($SECONDS/$PROGRESS)" )
                 printf '*************************** %s%% Completed ********* Estimated Time Remaining %s\r' "$(round $PROGRESS)" "$(convertsecs $(round $REMAINING))"
-                fi
-                cd $INPUT
+            fi
+            cd $INPUT
         fi
     done
 printf '\n'

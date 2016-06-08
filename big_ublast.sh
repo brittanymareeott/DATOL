@@ -49,7 +49,7 @@ export DBS
 export OUT
 export QUERY
 #Loop through all protein ublast databases
-SPECIES=($(find $DBS -name "*.udb" -exec basename {} \; ))
+SPECIES=($(find $DBS -name "*.udb" | sed 's#.*/##' ))
 
 # Divide THREADS by 6 to see how many ublast searches to run at a time
 RUNS=$( echo "scale=0;$THREADS/6" | bc -l )
@@ -57,6 +57,6 @@ export RUNS
 # Using the xargs command to multithread the ublast job.
 printf "%s\n" "${SPECIES[@]}" | xargs -n 1 -P 1 -I %x bash -c 'FILE=%x;\
     SPECIES=${FILE/.udb/};\
-    QUERIES=($(find $QUERY -type f -exec basename {} \; )); \
+    QUERIES=($(find $QUERY -type f -exec basename {} \; | sed -e "s,.fas,," )); \
     printf "***********   Starting ublast for $SPECIES on `date` ...\n";\
-    printf "%s\n" "${QUERIES[@]}" | xargs -n 1 -P $RUNS -I % usearch -ublast $QUERY/% -db $DBS/$SPECIES".udb" -evalue 1e-9 -threads 6 -userout $OUT/%"_"$SPECIES".txt" -userfields target 1> $OUT"/stdout.out" 2> $OUT"/stderr.out"'
+    printf "%s\n" "${QUERIES[@]}" | xargs -n 1 -P $RUNS -I % usearch -ublast $QUERY/%.fas -db $DBS/$SPECIES".udb" -evalue 1e-9 -threads 6 -userout $OUT/%"_"$SPECIES".txt" -userfields target 1> $OUT"/stdout.out" 2> $OUT"/stderr.out"'

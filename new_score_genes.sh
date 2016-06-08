@@ -4,18 +4,18 @@
 
 # Author: Gregg Mendez
 
-# This script generates the necessary HMMs and HMM bitscore cut offs necessary to run the loop 
+# This script generates the necessary HMMs and HMM bitscore cut offs necessary to run the loop
 # with new genes. It takes fasta files as input. A separate fasta file for each gene is required.
 # Multiple sequences for each gene are required.
 #
 # The output will be a directory containing HMMs (and alignments) for each gene and 2 files:
-# averages.txt and score_cutoffs.txt 
+# averages.txt and score_cutoffs.txt
 #
 # The input files MUST be named as follows:
 # fasta filename = [gene name].[extension]
 # example file names: KOG2606.fasta, BUSCO2606.fa, 000975.fsa
 # fasta description lines = >[species name]___[gene name]
-# example description lines: 
+# example description lines:
 # >7294285___KOG2606
 # >Amphidinium_carterae_MMET_c20244_g2_i1|m.35950___9658 c20244_g2_i1|g.35950  ORF c20244_g2_i1|g.35950 c20244_g2_i1|m.35950 type:5prime_partial len:164 (+) c20244_g2_i1:2-493(+) | aligned:3-164 (164)
 
@@ -93,7 +93,7 @@ mkdir -p $OUT/hmms
 # move into the input directory
 cd $IN
 
-# Inside each subshell we are first breaking each multi-fasta file into individual 
+# Inside each subshell we are first breaking each multi-fasta file into individual
 # fasta files for each sequence, then creating a list of all those single sequence
 # files. We then loop through that list and create an alignment for every combination
 # of sequences missing one of the sequences. An hmm is built for each of those alignments
@@ -110,7 +110,7 @@ function CALC_SCORES() {
     for j in ${ALIGNMENT[@]}
         do ARRAY_BOB=(${ALIGNMENT[@]/$j})
             cat ${ARRAY_BOB[@]} > allminus_${j/fsa/fasta}
-            mafft --auto allminus_${j/fsa/fasta} > allminus_${j/fsa/fa}
+            mafft --quiet --auto allminus_${j/fsa/fasta} > allminus_${j/fsa/fa}
             hmmbuild allminus_${j/fsa/hmm} allminus_${j/fsa/fa}
             hmmsearch allminus_${j/fsa/hmm} $j > ${j/fsa/out}
         done
@@ -124,7 +124,7 @@ function CALC_SCORES() {
     AVERAGE=$(echo "scale=3; $MATHS/$ITEMS" | bc -l)
     CUTOFF=$(echo "scale=3; $AVERAGE/2" | bc -l)
     echo $GENE $AVERAGE >> $OUT/average.txt
-    echo $GENE $CUTOFF >> $OUT/score_cutoffs.txt
+    echo $GENE $CUTOFF >> $OUT/scores_cutoff.txt
 }
 # make variables and funtions available to our subshells
 export EXT
@@ -139,8 +139,7 @@ export -f CALC_SCORES
 find *.$EXT | xargs -n 1 -P $THREADS -I % bash -c 'FILE=% ; \
     CALC_SCORES ; \
     cd $IN ; \
-    mafft --auto $FILE > $OUT/hmms/$GENE.fasta ; \
+    mafft --quiet --auto $FILE > $OUT/hmms/$GENE.fasta ; \
     hmmbuild $OUT/hmms/$GENE.hmm $OUT/hmms/$GENE.fasta'
 # delete the tmp directory
 rm -r $OUT/tmp
-

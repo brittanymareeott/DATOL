@@ -5,10 +5,10 @@
 # Author: Gregory Mendez
 #
 # This script analyses a tree file in newick format and generates a list of taxa with
-# unusually long branches based on the median branch length within the tree. It will 
+# unusually long branches based on the median branch length within the tree. It will
 # also output a file with all the branch lengths and a histogram of the branch lengths
 # with the median length and the cutoff score indicated with lines.
-# 
+#
 # The script takes 4 arguments.
 # 1) --tree | Tree file in newick format
 # 2) --multi | Branch length cutoff multiplier. I suggest something around 5-10.
@@ -33,11 +33,11 @@ from ete2 import Tree, faces, AttrFace, TreeStyle, NodeStyle
 # Argument Parser
 parser = argparse.ArgumentParser(description = 'This script analyses a tree file in newick format and generates a list of taxa with unusually long branches based on the median branch length within the tree. It will  also output a file with all the branch lengths and a histogram of the branch lengths with the median length and the cutoff score indicated with lines.')
 
-parser.add_argument('--tree', required=True, help='The Newick formatted tree file you want to analyze.') 
-parser.add_argument('--multi', required=True, help='The multiplier you want to use to set the cut-off. We recommend 5-10.') 
-parser.add_argument('--outgroups', required=True, help='A text document with your outgroups listed. The line should start with the word Outgroup1 followed by a list of all the species in the outgroup with everything separated by spaces. You can specify Outgroup2 and Outgroup3 on other lines as backup outgroups if no species from your outgroup are present.') 
+parser.add_argument('--tree', required=True, help='The Newick formatted tree file you want to analyze.')
+parser.add_argument('--multi', required=True, help='The multiplier you want to use to set the cut-off. We recommend 5-10.')
+parser.add_argument('--outgroups', required=True, help='A text document with your outgroups listed. The line should start with the word Outgroup1 followed by a list of all the species in the outgroup with everything separated by spaces. You can specify Outgroup2 and Outgroup3 on other lines as backup outgroups if no species from your outgroup are present.')
 parser.add_argument('--out_dir', required=True, help='The directory in which to save all output files.')
-args = parser.parse_args() 
+args = parser.parse_args()
 
 #Set tree to the first command line argument (0 is the script itself)
 TREE = Phylo.read(args.tree, "newick")
@@ -70,7 +70,8 @@ def lookup_by_names(TREE):
             names[clade.name] = clade
     return names
 #### ETE TOOLKIT BASED FUNCTIONS AND STYLES:
-ts = TreeStyle() 
+ts = TreeStyle()
+ts.scale = 200
 RED = NodeStyle()
 RED["size"] = 0
 RED["vt_line_width"] = 1
@@ -83,10 +84,10 @@ nstyle["size"] = 0
 #### STATISTICS FUNCTIONS:
 # Median Absolute Deviation Statistic (MAD)
 def mad(data, axis=None):
-	return median(absolute(data - median(data, axis)), axis)
+    return median(absolute(data - median(data, axis)), axis)
 # Cut off score
 def cut(data, axis=None):
-	return median(data, axis) + median(absolute(data - median(data, axis)), axis)*MULTI
+    return median(data, axis) + median(absolute(data - median(data, axis)), axis)*MULTI
 
 ##### END FUNCTIONS
 
@@ -97,7 +98,7 @@ tabulate_names(TREE)
 names = lookup_by_names(TREE)
 #Count species in tree:
 TOTAL_SPECIES = len(names['0'].get_terminals())
-		
+
 # Root the tree using the outgroup specified in the text file
 # First loop through text file and save the taxa from the Outgroup line to a list
 OUTGROUP1 = []
@@ -105,61 +106,67 @@ OUTGROUP2 = []
 OUTGROUP3 = []
 # Make lists of each outgroup
 for LINE in OUTGROUP_FILE:
-	if LINE.split()[0] == "Outgroup1":
-		for OUT in LINE.split()[2:]:
-			OUTGROUP1.append( OUT )
-	if LINE.split()[0] == "Outgroup2":
-		for OUT in LINE.split()[2:]:
-			OUTGROUP2.append( OUT )
-	if LINE.split()[0] == "Outgroup3":
-		for OUT in LINE.split()[2:]:
-			OUTGROUP3.append( OUT )
+    if LINE.split()[0] == "Outgroup1":
+        for OUT in LINE.split()[2:]:
+            OUTGROUP1.append( OUT )
+    if LINE.split()[0] == "Outgroup2":
+        for OUT in LINE.split()[2:]:
+            OUTGROUP2.append( OUT )
+    if LINE.split()[0] == "Outgroup3":
+        for OUT in LINE.split()[2:]:
+            OUTGROUP3.append( OUT )
 # Next check if our outgroup taxa are in the tree and create a new list of just species present.
-TREE_LIST = []
+TREE_LIST = {}
 # Make list of all species in tree.
 for TERMINAL in names['0'].get_terminals():
-	TREE_LIST.append(TERMINAL.name)
+    SPECIES = TERMINAL.name.split("___")[0]
+    SEQID = TERMINAL.name.split("___")[1]
+    TREE_LIST[SPECIES] = SEQID
+
 NEW_OUTGROUP = []
-for OUT in OUTGROUP1:
-	if OUT in TREE_LIST:
-		NEW_OUTGROUP.append( OUT )
+for SPECIES, SEQID in TREE_LIST.iteritems():
+    if SPECIES in OUTGROUP1:
+        FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+        NEW_OUTGROUP.append( FULL_NAME )
 # Root tree using the Outgroup taxa that are present, and if no outgroup taxa are present use the midpoint method to root the tree.
 if len( NEW_OUTGROUP ) > 1:
-	ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
-	T.set_outgroup( ANCESTOR )
+    ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
+    T.set_outgroup( ANCESTOR )
 if len( NEW_OUTGROUP ) == 1:
-	T.set_outgroup( NEW_OUTGROUP[0] )
+    T.set_outgroup( NEW_OUTGROUP[0] )
 if len( NEW_OUTGROUP ) < 1:
-	for OUT in OUTGROUP2:
-		if OUT in TREE_LIST:
-			NEW_OUTGROUP.append( OUT )
-	if len( NEW_OUTGROUP ) > 1:
-		ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
-		T.set_outgroup( ANCESTOR )
-	if len( NEW_OUTGROUP ) == 1:
-		T.set_outgroup( NEW_OUTGROUP[0] )
-	if len( NEW_OUTGROUP ) < 1:
-		for OUT in OUTGROUP2:
-			if OUT in TREE_LIST:
-				NEW_OUTGROUP.append( OUT )
-		if len( NEW_OUTGROUP ) > 1:
-			ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
-			T.set_outgroup( ANCESTOR )
-		if len( NEW_OUTGROUP ) == 1:
-			T.set_outgroup( NEW_OUTGROUP[0] )
-		if len( NEW_OUTGROUP ) < 1:
-			print("%s: No outgroup taxa present. Rooting at midpoint instead. This may break a monophyletic group." % args.tree )
-			R = T.get_midpoint_outgroup()
-			T.set_outgroup(R)
+    for SPECIES, SEQID in TREE_LIST.iteritems():
+        if SPECIES in OUTGROUP2:
+            FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+            NEW_OUTGROUP.append( FULL_NAME )
+    if len( NEW_OUTGROUP ) > 1:
+        ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
+        T.set_outgroup( ANCESTOR )
+    if len( NEW_OUTGROUP ) == 1:
+        T.set_outgroup( NEW_OUTGROUP[0] )
+    if len( NEW_OUTGROUP ) < 1:
+        for SPECIES, SEQID in TREE_LIST.iteritems():
+            if SPECIES in OUTGROUP3:
+                FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+                NEW_OUTGROUP.append( FULL_NAME )
+        if len( NEW_OUTGROUP ) > 1:
+            ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
+            T.set_outgroup( ANCESTOR )
+        if len( NEW_OUTGROUP ) == 1:
+            T.set_outgroup( NEW_OUTGROUP[0] )
+        if len( NEW_OUTGROUP ) < 1:
+            print("%s: No outgroup taxa present. Rooting at midpoint instead. This may break a monophyletic group." % args.tree )
+            R = T.get_midpoint_outgroup()
+            T.set_outgroup(R)
 #Print list of clade names and branch lengths and fill an array with the branch lengths
 array_branch_lengths = []
 with open (OUTPUT, 'w') as all_branch_lengths:
-	for clade in TREE.find_clades():
-		array_branch_lengths.append(clade.branch_length)
-		all_branch_lengths.write('%s\t%s\n' % (clade.name, clade.branch_length))
-	all_branch_lengths.write('MEDIAN\t%s\n' % (median(array_branch_lengths)))
-	all_branch_lengths.write('MAD\t%s\n' % (mad(array_branch_lengths)))
-	all_branch_lengths.write('CUT_OFF\t%s\n' % (cut(array_branch_lengths)))
+    for clade in TREE.find_clades():
+        array_branch_lengths.append(clade.branch_length)
+        all_branch_lengths.write('%s\t%s\n' % (clade.name, clade.branch_length))
+    all_branch_lengths.write('MEDIAN\t%s\n' % (median(array_branch_lengths)))
+    all_branch_lengths.write('MAD\t%s\n' % (mad(array_branch_lengths)))
+    all_branch_lengths.write('CUT_OFF\t%s\n' % (cut(array_branch_lengths)))
 ts.scale = 300 / max(array_branch_lengths)
 # Generate Histograms of branch lengths with lines for median, and MAD Cut Off
 X = array_branch_lengths
@@ -171,31 +178,21 @@ plt.ylabel("Frequency")
 plt.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc=3, ncol=3, mode="expand", borderaxespad=0.)
 plt.savefig('%s/%s.hist.pdf' % (OUT_DIR, GENE))
 plt.close()
-			
+
 #Find Species that are the terminal nodes of any long branches and write the species to a text document
 BadSpecies = []
-# for clade in TREE.find_clades():
-#     if len(names[clade.name].get_terminals()) < TOTAL_SPECIES * .5:
-#         if clade.branch_length > cut(array_branch_lengths):
-#             capture = clade.get_terminals()
-#             for species in capture:
-#                 if species.name not in BadSpecies:
-#                     BadSpecies.append(species.name)
-# with open ( '%s/longbranch_taxa.%s.txt' % ( OUT_DIR, GENE ), 'w') as LONG_OUT:
-# 	for OTU in BadSpecies:
-# 		print>>LONG_OUT, OTU
-		
-# Write a new tree file with the long branches indicated and their clades indicated			
+
+# Write a new tree file with the long branches indicated and their clades indicated
 for CLADE in T.traverse():
-	CLADE.set_style(nstyle)
-	if len(CLADE) < TOTAL_SPECIES * .5:
-		if CLADE.dist > cut(array_branch_lengths):
-			CLADE.img_style = RED
-			CAPTURE = CLADE.get_leaves()
-			for SPECIES in CAPTURE:
-			    if SPECIES.name not in BadSpecies:
-			        BadSpecies.append(SPECIES.name)
+    CLADE.set_style(nstyle)
+    if len(CLADE) < TOTAL_SPECIES * .5:
+        if CLADE.dist > cut(array_branch_lengths):
+            CLADE.img_style = RED
+            CAPTURE = CLADE.get_leaves()
+            for SPECIES in CAPTURE:
+                if SPECIES.name not in BadSpecies:
+                    BadSpecies.append(SPECIES.name)
 T.render( '%s/%s.tre.pdf' % ( OUT_DIR, GENE ), tree_style=ts)
 with open ( '%s/longbranch_taxa.%s.txt' % ( OUT_DIR, GENE ), 'w') as LONG_OUT:
-	for OTU in BadSpecies:
-		print>>LONG_OUT, OTU
+    for OTU in BadSpecies:
+        print>>LONG_OUT, OTU.split("___")[0]

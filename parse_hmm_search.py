@@ -47,7 +47,7 @@ def ParseHMM(HMMs, OUT_DIR):
 								SPECIES_DICT_TOP_HITS[SPECIES] = {}
 								SPECIES_DICT_TOP_HITS[SPECIES][GENE] = set()
 								SPECIES_DICT_TOP_HITS[SPECIES][GENE].add(ORF_ID)
-					elif HMM_SCORE > NEW_HMM_SCORE:
+					elif HMM_SCORE * 0.8 < NEW_HMM_SCORE:
 						try:
 							SPECIES_DICT_OTHER_HITS[SPECIES][GENE].add(ORF_ID)
 						except KeyError:
@@ -118,7 +118,7 @@ def ParseHMM(HMMs, OUT_DIR):
 #									OutPeps.write('>%s___%s\n%s\n' % (GENE, Record.name, Record.seq))
 
 # Argument Parser
-parser = argparse.ArgumentParser(description = 'This is a program...')
+parser = argparse.ArgumentParser(description = '# This script fetches sequences listed in hmmsearch results files and writes out a plain text file. The plain text file is intended for use by another script to write new fasta files with the full length sequences using the def-lines listed in the hmmsearch results and the large fasta file used to generate the hmmsearch output file.')
 
 parser.add_argument('--hmm', required=True, help='HMMsearch output dir') 
 # Only needed for the pure python method. This method is slow.

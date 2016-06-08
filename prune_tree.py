@@ -15,8 +15,7 @@
 # prune_tree.py constraint.tre big_alignment.fasta
 
 from Bio import Phylo
-import sys
-import re
+import sys, re
 
 
 #Set tree to the first command line argument (0 is the script itself)
@@ -67,20 +66,25 @@ names = lookup_by_names(tree)
 for TERMINAL in names['0'].get_terminals():
 	TREE_LIST.append(TERMINAL.name)
 #Make list of all species in alignment
+SEQIDS = {}
 with open(INPUT, 'r') as ALIGNMENT:
 	for LINE in ALIGNMENT:
 		if FORMAT is str("FASTA"):
 			if ">" in LINE:
-				SPECIES = re.sub(r'>([0-9A-Za-z_]+)\n', r'\1', LINE)
+				SPECIES = re.sub(r'>([0-9A-Za-z_]+)___\n', r'\1', LINE)
+				SEQID = re.sub(r'>[0-9A-Za-z_]+___([0-9A-Za-z_|.]+)\n', r'\1', LINE)
 				if SPECIES in TREE_LIST:
 					SPECIES_LIST.append(SPECIES)
+					SEQIDS[SPECIES] = SEQID
 		else:
 			if FORMAT is str("PHYLIP"):
 			    if re.match(r'\w', LINE):
-				    SPECIES = LINE.split()[0]
+				    SPECIES = LINE.split()[0].split("___")[0]
+				    SEQID = LINE.split()[0].split("___")[1]
 				    if SPECIES in TREE_LIST:
 					    SPECIES_LIST.append(SPECIES)
-					
+					    SEQIDS[SPECIES] = SEQID
+			
 # Make list of species in tree that aren't in alignment
 MISSING_LIST = []
 for ITEM in TREE_LIST:
@@ -90,4 +94,12 @@ for ITEM in TREE_LIST:
 # Remove missing species from tree and write this edited tree out to a new file
 for PRUNE in MISSING_LIST:
 	tree.prune(PRUNE)
+
+# Edit names in tree to include the sequence id from the alignment file
+for idx, clade in enumerate(tree.find_clades()):
+    for KEY, VALUE in SEQIDS.iteritems():
+        if (clade.name == KEY):
+            clade.name = '___'.join([KEY, VALUE])
+
 Phylo.write(tree, OUTPUT, 'newick')
+            

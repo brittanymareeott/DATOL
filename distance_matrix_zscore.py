@@ -5,17 +5,17 @@
 # Author: Gregory S Mendez
 
 # This script analyzes a set of distance matrixes for different genes for genes with significantly different
-# distances than the rest of the genes from the same species. It starts by converting distances into ratios 
-# of distance divided by median distance in each tree to standardize distances across genes that may have 
+# distances than the rest of the genes from the same species. It starts by converting distances into ratios
+# of distance divided by median distance in each tree to standardize distances across genes that may have
 # different substitution rates. Then it looks across genes to compare all of the same distance measurements
-# for each gene and converts these ratios into modified z-scores. A modified z-score greater than 3.5 is 
+# for each gene and converts these ratios into modified z-scores. A modified z-score greater than 3.5 is
 # considered an outlier. Each sequence will have a set of modified z-scores from all the distance measures, so
-# you set a cut-off for what percentage of those distances can be outliers before the sequence itself is 
-# considered an outlier. Anything over 30% is probably an outlier, but you can set the cutoff however you like.
+# you set a cut-off for what percentage of those distances can be outliers before the sequence itself is
+# considered an outlier. Anything over 80-90 is probably an outlier, but you can set the cutoff however you like.
 # If an entire library has a lot of contamination some contaminates will probably slip through this test,
 # so it is wise to have another contamination test if you suspect large amounts of contaminating sequences.
 
-# This script takes 4 arguments:
+# This script takes 5 arguments:
 # 1) --input | The directory containing the distance matrix files with names formatted so they all start with RAxML_distances.
 # 2) --score | The percent of outlier distances required to flag a sequence as an outlier.
 # 3) --tree | The directory containing newick formatted tree files used to generate the distance matrixes (used for visualization only)
@@ -37,17 +37,17 @@ from time import time
 from ete2 import Tree, faces, AttrFace, TreeStyle, NodeStyle, TextFace
 
 # Argument Parser
-parser = argparse.ArgumentParser(description = 'This script will convert a RAxML distance matrix to a modified z-score normalized distance matrix')
+parser = argparse.ArgumentParser(description = 'This script analyzes a set of distance matrixes for different genes for genes with significantly different distances than the rest of the genes from the same species.')
 parser.add_argument('--input', required=True, help='The input RAxML distance matrix file.')
 parser.add_argument('--score', required=True, help='The percent of pairwise distance outliers required to mark an enture gene an outlier.')
 parser.add_argument('--tree', required=True, help='The directory containing newick formatted tree files used to generate the distance matrixes (used for visualization only)')
 parser.add_argument('--out', required=True, help='The directory where you want output files written.')
-parser.add_argument('--outgroups', required=True, help='A text document with your outgroups listed. The line should start with the word Outgroup1 followed by a list of all the species in the outgroup with everything separated by spaces. You can specify Outgroup2 and Outgroup3 on other lines as backup outgroups if no species from your outgroup are present.') 
-args = parser.parse_args() 
+parser.add_argument('--outgroups', required=True, help='A text document with your outgroups listed. The line should start with the word Outgroup1 followed by a list of all the species in the outgroup with everything separated by spaces. You can specify Outgroup2 and Outgroup3 on other lines as backup outgroups if no species from your outgroup are present.')
+args = parser.parse_args()
 
 # Functions to calculate Median absolute deviation, and Modified Z-score
 def MAD(VALUES, axis=None):
-	return np.median(np.absolute(VALUES - np.median(VALUES, axis)), axis)
+    return np.median(np.absolute(VALUES - np.median(VALUES, axis)), axis)
 def MODZ(VALUES, axis=None):
     if MAD(VALUES) == 0:
         return VALUES
@@ -55,7 +55,8 @@ def MODZ(VALUES, axis=None):
         return (0.6745 * (VALUES - np.median(VALUES))) / MAD(VALUES)
 
 #### ETE TOOLKIT BASED FUNCTIONS AND STYLES:
-ts = TreeStyle() 
+ts = TreeStyle()
+ts.scale = 200
 RED = NodeStyle()
 RED["size"] = 0
 RED["vt_line_width"] = 1
@@ -64,8 +65,8 @@ RED["vt_line_type"] = 1 # 0 solid, 1 dashed, 2 dotted
 RED["hz_line_type"] = 1
 RED["bgcolor"] = "#dedede"
 nstyle = NodeStyle()
-nstyle["size"] = 0   
-    
+nstyle["size"] = 0
+
 def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
 #######################################
 #        Load all distances into a data matrix
@@ -88,10 +89,12 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
                 # Find distance by splitting the line on a space tab space, select last item in that list, and stripping out the line break
                 DATUM = float(LINE.split(' \t ')[-1].strip('\n'))
                 RATIO = ( DATUM / JUST_MEDIAN )
-#             # Starting from the innermost parenthetical we are first splitting on a space tab space, selecting the first item
-#             # from that split, splitting that on a space, storing that as a string, sorting that list, then joining the two 
-#             # terms with a triple underscore, and setting equal to the variable KEY
-                KEY = "___".join(sorted(str(LINE.split(' \t ')[0]).split(' ')))
+#             # For each species we first split on a space-tab-space, then split on just a space. Now we have the two species separated.
+#             # Now we need to remove the seq-id. So we split each species by a triple underscore. Lastly we join the species with a
+#             # triple underscore.
+                SPECIES1 = sorted(LINE.split(' \t ')[0].split(' '))[0].split("___")[0]
+                SPECIES2 = sorted(LINE.split(' \t ')[0].split(' '))[1].split("___")[0]
+                KEY = "___".join([SPECIES1, SPECIES2])
                 #Fill Dictionary with the newly found KEY and DATUM
                 try:
                     DATA[KEY][GENE] = RATIO
@@ -101,11 +104,32 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
     print('Loading took %f seconds' %( t1 - t0 ))
 
 #######################################
+#        LOAD SEQ IDS
+#######################################
+    SEQ_ARR = {}
+    for SEQ_FILE in glob('%s/*.phy' % DIST_DIR):
+        GENE = os.path.basename(SEQ_FILE).split('.')[0]
+        with open(SEQ_FILE, 'r ') as SEQ_DATA:
+            for LINE in SEQ_DATA:
+                if LINE and LINE[0].isalpha():
+                    SPECIES = LINE.split('___')[0]
+                    SEQ_ID = LINE.split('___')[1].split(' ')[0]
+                    try:
+                        SEQ_ARR[GENE][SPECIES] = SEQ_ID
+                    except KeyError:
+                        SEQ_ARR[GENE] = { SPECIES:SEQ_ID }
+    # GENE = 'KOG3218'
+    # TAXON = 'Scrippsiella_trochoidea'
+    # TEST = SEQ_ARR[GENE][TAXON]
+    # print('%s' % TEST)
+
+
+#######################################
 #        Generate Modified Z-Scores For Each Distance
 #######################################
 
-# Create a new matrix by copying the data and dividing each datum by 0.1 * median - 
-# This centers the distribution on 10 for every distance distribution, which will allow 
+# Create a new matrix by copying the data and dividing each datum by 0.1 * median -
+# This centers the distribution on 10 for every distance distribution, which will allow
 # normalizing the data (by taking the log) without shifting the distribution into negative
 # values which will cause problems for a Z-Score calculation.
     t0 = time()
@@ -131,7 +155,7 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
               GENES_DATA[GENE] = DATUM_MODZ
     t1 = time()
     print('Calculating took %f seconds' %( t1 - t0 ))
-    
+
 #######################################
 #        Collect Modified Z-Scores by Gene
 #######################################
@@ -165,7 +189,7 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
                     GENE_DATA[GENE] = {}
                     GENE_DATA[GENE][SPECIES_2] = {}
                     GENE_DATA[GENE][SPECIES_2][SPECIES___SPECIES] = DATUM
-                    
+
 # First loop through text file and save the taxa from the Outgroup line to a list
     OUTGROUP1 = []
     OUTGROUP2 = []
@@ -180,41 +204,57 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
                 OUTGROUP2.append( OUT )
         if LINE.split()[0] == "Outgroup3":
             for OUT in LINE.split()[2:]:
-                OUTGROUP3.append( OUT )     
-                                   
+                OUTGROUP3.append( OUT )
+
 #######################################
 #        COUNT OUTLIERS AND WRITE FILES
-#######################################      
+#######################################
+    t0 = time()
+    print("************************** Writing Output")
     for GENE, VALUES in GENE_DATA.iteritems():
         BADSPECIES = {}
-        TOTAL_DIST = len(VALUES.keys())
+        TOTAL_SPECIES = len(VALUES.keys())
+        # print( '%s' % TOTAL_SPECIES)
+        TOTAL_COMPARISONS = ((TOTAL_SPECIES - 1) * TOTAL_SPECIES ) / 2
+        # print( '%s' % TOTAL_COMPARISONS)
         for SPECIES, DISTANCES in VALUES.iteritems():
             SPECIES_COUNT = 0
             for SPECIES___SPECIES, DATUM in DISTANCES.iteritems():
-                if DATUM >= 3.5:
-                    SPECIES_COUNT = SPECIES_COUNT + 1
-            PERCENT_OUTLIERS = float( ( float(SPECIES_COUNT) / float(TOTAL_DIST) ) * 100 )
-            if PERCENT_OUTLIERS > float(SCORE):
+                SPECIES_COUNT = float(SPECIES_COUNT) + float(DATUM)
+            # print( '%s' % SPECIES_COUNT )
+            RATIO = float( float(SPECIES_COUNT) / float( TOTAL_COMPARISONS ) ) * 1000
+            # print( '%s' % RATIO )
+            #     if DATUM >= 3:
+            #         SPECIES_COUNT = SPECIES_COUNT + 1
+            # PERCENT_OUTLIERS = float( ( float(SPECIES_COUNT) / float(TOTAL_SPECIES) ) * 100 )
+            # if PERCENT_OUTLIERS > float(SCORE):
+            if RATIO > float(SCORE):
                 if SPECIES not in BADSPECIES.keys():
-                    BADSPECIES[SPECIES] = PERCENT_OUTLIERS
-        with open ( '%s/outlier_taxa.%s.txt' % ( OUT_DIR, GENE ), 'w') as OUT_OUT:
-            for TAXON in BADSPECIES.keys():
-	            OUT_OUT.write("%s\n" % TAXON)
-	            
+                    BADSPECIES[SPECIES] = RATIO
+        for TAXON in BADSPECIES.keys():
+            with open ( '%s/outlier_taxa.%s.txt' % ( OUT_DIR, GENE ), 'a') as OUT_OUT:
+                OUT_OUT.write("%s\n" % TAXON)
+            with open ( '%s/%s_seqids.txt' % ( OUT_DIR, TAXON ), 'a') as OUT_IDS:
+                TAXON_SEQ = SEQ_ARR[GENE][TAXON]
+                OUT_IDS.write("%s\n" % TAXON_SEQ)
+
     #######################################
     #        GENERATE TREES
-    #######################################    
+    #######################################
         # Root the tree using the outgroup specified in the text file
         # Next check if our outgroup taxa are in the tree and create a new list of just species present.
-        TREE_LIST = []
+        TREE_LIST = {}
         # Make list of all species in tree.
         T = Tree( "%s/RAxML_result.%s.constrained.tre" % ( TREE, GENE ) )
         for LEAF in T:
-            TREE_LIST.append(LEAF.name)
+            SPECIES = LEAF.name.split("___")[0]
+            SEQID = LEAF.name.split("___")[1]
+            TREE_LIST[SPECIES] = SEQID
         NEW_OUTGROUP = []
-        for OUT in OUTGROUP1:
-            if OUT in TREE_LIST:
-                NEW_OUTGROUP.append( OUT )
+        for SPECIES, SEQID in TREE_LIST.iteritems():
+            if SPECIES in OUTGROUP1:
+                FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+                NEW_OUTGROUP.append( FULL_NAME )
         # Root tree using the Outgroup taxa that are present, and if no outgroup taxa are present use the midpoint method to root the tree.
         if len( NEW_OUTGROUP ) > 1:
             ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
@@ -222,18 +262,20 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
         if len( NEW_OUTGROUP ) == 1:
             T.set_outgroup( NEW_OUTGROUP[0] )
         if len( NEW_OUTGROUP ) < 1:
-            for OUT in OUTGROUP2:
-                if OUT in TREE_LIST:
-                    NEW_OUTGROUP.append( OUT )
+            for SPECIES, SEQID in TREE_LIST.iteritems():
+                if SPECIES in OUTGROUP2:
+                    FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+                    NEW_OUTGROUP.append( FULL_NAME )
             if len( NEW_OUTGROUP ) > 1:
                 ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
                 T.set_outgroup( ANCESTOR )
             if len( NEW_OUTGROUP ) == 1:
                 T.set_outgroup( NEW_OUTGROUP[0] )
             if len( NEW_OUTGROUP ) < 1:
-                for OUT in OUTGROUP2:
-                    if OUT in TREE_LIST:
-                        NEW_OUTGROUP.append( OUT )
+                for SPECIES, SEQID in TREE_LIST.iteritems():
+                    if SPECIES in OUTGROUP3:
+                        FULL_NAME = "___".join( [ SPECIES, SEQID ] )
+                        NEW_OUTGROUP.append( FULL_NAME )
                 if len( NEW_OUTGROUP ) > 1:
                     ANCESTOR = T.get_common_ancestor( NEW_OUTGROUP )
                     T.set_outgroup( ANCESTOR )
@@ -242,16 +284,19 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
                 if len( NEW_OUTGROUP ) < 1:
                     print("%s: No outgroup taxa present. Rooting at midpoint instead. This may break a monophyletic group." % GENE )
                     R = T.get_midpoint_outgroup()
-                    T.set_outgroup(R)            
-        # Write a new tree file with the long branches indicated and their clades indicated	
+                    T.set_outgroup(R)
+        # Write a new tree file with the long branches indicated and their clades indicated
         for CLADE in T.traverse():
-	        CLADE.set_style(nstyle)		
+            CLADE.set_style(nstyle)
         for LEAF in T:
-            if LEAF.name in BADSPECIES.keys():
+            SPECIES = LEAF.name.split('___')[0]
+            if SPECIES in BADSPECIES.keys():
                 LEAF.img_style = RED
-                LEAF.add_face(TextFace("\t%.2f" % BADSPECIES[LEAF.name]), column=1, position = "branch-right")
-        T.render( '%s/%s.tre.pdf' % ( OUT_DIR, GENE ), tree_style=ts)            
-    
+                LEAF.add_face(TextFace("\t%.2f" % BADSPECIES[SPECIES]), column=1, position = "branch-right")
+        T.render( '%s/%s.tre.pdf' % ( OUT_DIR, GENE ), tree_style=ts)
+    t1 = time()
+    print('Writing took %f seconds' %( t1 - t0 ))
+
 #######################################
 #        Create Histograms
 #######################################
@@ -261,7 +306,7 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
 #     t0 = time()
 #     for KEY in DATA:
 # #        print KEY
-#         X = DATA[KEY].values() 
+#         X = DATA[KEY].values()
 # #        Y = DATA_NORMALIZED[KEY].values()
 # #        F = DATA_WEIRD[KEY].values()
 # #        plt.axvline(np.median(DATA_NORMALIZED[KEY].values()), color='b', linestyle='dashed', linewidth=2, label='Median')
@@ -274,10 +319,10 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
 # #     # Write the contents of the new dictionary to a file
 # # #     with open(OUT_FILE, 'w') as OUT:
 # # #         for key, value in MODZ_DATA.items():
-# # #           OUT.write('%s\t%s\n' % (key, value))  
+# # #           OUT.write('%s\t%s\n' % (key, value))
 # # #    print MODZ_DATA["Alexandrium_margalefi___Ceratium_fusus"]
-# # #    X = MODZ_DATA["Alexandrium_margalefi___Ceratium_fusus"].values() 
-# # #     Y = DATA["Alexandrium_margalefi___Ceratium_fusus"].values() 
+# # #    X = MODZ_DATA["Alexandrium_margalefi___Ceratium_fusus"].values()
+# # #     Y = DATA["Alexandrium_margalefi___Ceratium_fusus"].values()
 #         BINS = 50
 #         plt.hist(X, bins=BINS, color='c', alpha=0.5, label='Raw')
 # #        plt.hist(Z, bins=BINS, color='y', alpha=0.5, label='Mod Z-score')
@@ -298,7 +343,7 @@ def MODZ_ALL(DIST_DIR, SCORE, TREE, OUT_DIR, OUTGROUPS):
 #         sys.stdout.flush()
 #     t1 = time()
 #     print('***************************   Writing histograms took %f seconds ***************************' %( t1 - t0 ))
-        
-           
-#Invoke the function that does all the work    
+
+
+#Invoke the function that does all the work
 MODZ_ALL(args.input, args.score, args.tree, args.out, args.outgroups)
