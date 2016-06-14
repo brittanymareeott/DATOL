@@ -90,9 +90,9 @@ When your tree finding is complete place the resulting files in the same directo
 Before launching search_optimization.sh you need to prepare a text file listing outgroups. This is necessary to root the trees being examined. It is best to have multiple possible rooting groups in case genes were not found for your first rooting choice. The line should start with the word Outgroup1 followed by a name for the group followed by a list of all the species in the outgroup with everything separated by spaces. You specify Outgroup2 and Outgroup3 on separate lines.
 Example outgroup file:
 
-    Outgroup1 Vitrella Vitrella_brassicaformis Alveolata_sp_CCMP3155
+    Outgroup1 Vitrella Vitrella_brassicaformis Vitrella_brassicaformis_CCMP3155
     Outgroup2 Oxyrrhis Oxyrrhis_marina_LB1974 Oxyrrhis_marina Oxyrrhis_marina_unknown
-    Outgroup3 Amphidinium Amphidinium_massartii Symbiodinium_sp_cladeA Amphidinium_carterae_MMET Amphidinium_carterae
+    Outgroup3 Amphidinium Amphidinium_massartii Amphidinium_sp_cladeA Amphidinium_carterae_MMET Amphidinium_carterae
 
 Example execution of search_optimization.sh script:
 
