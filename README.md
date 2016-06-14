@@ -10,7 +10,7 @@ This pipeline is also useful for finding genes in transcriptomic or annotated ge
 
 This pipeline uses blastp to generate a list of candidate hits that are scored according to a HMM. Candidate hits are fed into a series iterative phlyogenetic based tests to find the best hit. Part of this iterative process may flag certain genes as unacceptable for phylogenetic use, due to an inability to differentiate orthologs. In the end, a subset of the initial genes that all provide relaible hits are used to generate phylogenetic trees.
 
-This can be installed on *NIX platforms and requires the installation of: HMMER 3.1, MAFFT 7, RAxML 8, SAMTools, NCBI BLAST+, TrimAL 1.2, Python 2.7. And the Python libraries: Bio, numpy, matplotlib, ete2.
+This can be installed on *NIX platforms and requires the installation of: HMMER 3.1, MAFFT 7, RAxML 8, SAMTools, Usearch 8.1, TrimAL 1.2, Python 2.7. And the Python libraries: Bio, numpy, matplotlib, ete2.
 
 Necessary data inputs are fasta files of open reading frames for the CDS and corresponding proteins. If you wish to use your own genes then you will need fasta files for each gene listing sequences from a diverse set of taxa.
 
