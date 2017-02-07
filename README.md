@@ -14,6 +14,8 @@ This can be installed on *NIX platforms and requires the installation of: HMMER 
 
 Necessary data inputs are fasta files of open reading frames for the CDS and corresponding proteins. If you wish to use your own genes then you will need fasta files for each gene listing sequences from a diverse set of taxa.
 
+You can direct questions/comments to mendezg@umd.edu
+
 ***************************************
 
 ### B. Installation ###
